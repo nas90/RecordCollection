@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using RecordCollection.Web.Data;
 using RecordCollection.Web.Models;
 using RecordCollection.Web.Services;
+using RecordCollection.Web.Models.HomeViewModels;
 
 namespace RecordCollection.Web
 {
@@ -42,11 +43,16 @@ namespace RecordCollection.Web
             // Add framework services.
             var connectionString = Configuration.GetConnectionString("DefaultConnection");
 
+            services.AddOptions();
+
             services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
 
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
+
+
+            services.Configure<LastFM_Model>(Configuration);
 
             services.AddMvc();
 
