@@ -6,25 +6,40 @@ using Microsoft.AspNetCore.Mvc;
 using IF.Lastfm.Core.Api;
 using IF.Lastfm.Core.Objects;
 using System.Configuration;
-using RecordCollection.Web.Models.HomeViewModels;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Authorization;
+using RecordCollection.Web.Data;
+using RecordCollection.Web.Models;
+using RecordCollection.Web.Models.HomeViewModels;
 
 namespace RecordCollection.Web.Controllers
 {
+    [Authorize]
     public class HomeController : Controller
     {
         private readonly LastFM_Model _credentials;
 
-        public HomeController(IOptions<LastFM_Model> settingsOptions)
+        public HomeController(ApplicationDbContext dbContext, IOptions<LastFM_Model> settingsOptions)
         {
+            DbContext = dbContext;
             _credentials = settingsOptions.Value;
         }
 
-        public IActionResult Index()
+        public ApplicationDbContext DbContext { get; }
+
+        [HttpGet]
+        public async Task<IActionResult> Index()
         {
-            LoadRecords();
+            HomeViewModel l_model = new HomeViewModel();
+
+            var res = await LoadRecords();
+
+            l_model.Albums = res;
+
+            ViewData["Collections"] = DbContext.Collections;
+            ViewData["Albums"] = DbContext.Albums;
             
-            return View();
+            return View(l_model);
         }
 
         public IActionResult About()
@@ -46,15 +61,32 @@ namespace RecordCollection.Web.Controllers
             return View();
         }
 
-        public async void LoadRecords()
+        public async Task<List<Album>> LoadRecords()
         {
             var client = new LastfmClient(_credentials.ApiKey, _credentials.SecretKey);
 
-            var response = await client.Album.GetInfoAsync("Grimes", "Visions");
+            var collection = DbContext.Collections.Single(p => p.UserID == DbContext.Users.Single().Id);
+            var res = await client.Album.GetInfoAsync("Grimes", "Visions");
+            var list = DbContext.Albums
+                                    .Where(p => p.CollectionID == collection.ID)
+                                    .Select(p => p.LastFM_ID);
 
-            LastAlbum visions = response.Content;
+            var albums = new List<Album>();
 
-            //ViewData["Records"] = visions.ArtistName + " " + visions.Name + " <img src='" + visions.Images.Medium.AbsoluteUri + "' />";
+            foreach (var l_id in list)
+            {
+                var response = await client.Album.GetInfoByMbidAsync(res.Content.Mbid);
+                LastAlbum l_album = response.Content;
+
+                albums.Add(new Album() {
+                    ImgUrl = l_album.Images.Medium.AbsoluteUri,
+                    LastFM_ID = l_album.Id,
+                    Name = l_album.Name,
+                    ArtistName = l_album.ArtistName
+                });
+            }
+
+            return albums;
         } 
     }
 }

@@ -27,5 +27,8 @@ namespace RecordCollection.Web.Data
         {
             optionsBuilder.UseSqlite("Data Source=records.db");
         }
+
+        public DbSet<Album> Albums { get; set; }
+        public DbSet<Collection> Collections { get; set; }
     }
 }

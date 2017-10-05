@@ -1,8 +1,14 @@
-﻿@{
+﻿@model HomeViewModel
+@{
     ViewData["Title"] = "Home Page";
 }
 
-@ViewData["Records"]
+<ul>
+    @foreach (var album in Model.Albums)
+    {
+        <li>@album.ArtistName - @album.Name <img src="@album.ImgUrl" alt="@album.Name" title="@album.Name" /></li>
+    }
+</ul>
 
 <div id="myCarousel" class="carousel slide" data-ride="carousel" data-interval="6000">
     <ol class="carousel-indicators">
