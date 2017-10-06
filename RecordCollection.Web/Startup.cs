@@ -52,7 +52,7 @@ namespace RecordCollection.Web
                 .AddDefaultTokenProviders();
 
 
-            services.Configure<LastFM_Model>(Configuration);
+            services.Configure<LastFM_Credentials>(Configuration);
 
             services.AddMvc();
 

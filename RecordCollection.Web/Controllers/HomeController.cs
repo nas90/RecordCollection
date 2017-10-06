@@ -1,45 +1,102 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using IF.Lastfm.Core.Api;
 using IF.Lastfm.Core.Objects;
-using System.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authorization;
 using RecordCollection.Web.Data;
 using RecordCollection.Web.Models;
 using RecordCollection.Web.Models.HomeViewModels;
+using System.Threading;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace RecordCollection.Web.Controllers
 {
     [Authorize]
     public class HomeController : Controller
     {
-        private readonly LastFM_Model _credentials;
+        private readonly LastFM_Credentials _credentials;
 
-        public HomeController(ApplicationDbContext dbContext, IOptions<LastFM_Model> settingsOptions)
+        public HomeController(ApplicationDbContext dbContext, IOptions<LastFM_Credentials> settingsOptions)
         {
             DbContext = dbContext;
             _credentials = settingsOptions.Value;
         }
 
         public ApplicationDbContext DbContext { get; }
-
-        [HttpGet]
-        public async Task<IActionResult> Index()
+        
+        public async Task<ViewResult> Index(string searchString)
         {
             HomeViewModel l_model = new HomeViewModel();
 
             var res = await LoadRecords();
 
-            l_model.Albums = res;
+            l_model.Albums = res.ToList();
+
+            if (!String.IsNullOrEmpty(searchString))
+            {
+                l_model.Albums = l_model.Albums.Where(s => s.LastAlbum.Name.ToLower().Contains(searchString.ToLower())
+                                       || s.LastAlbum.ArtistName.ToLower().Contains(searchString.ToLower())).ToList();
+            }
 
             ViewData["Collections"] = DbContext.Collections;
             ViewData["Albums"] = DbContext.Albums;
             
             return View(l_model);
+        }
+        
+        public async Task<IActionResult> Add(string searchArtist, string searchTitle)
+        {
+            ViewData["Message"] = "Add new record.";
+
+            List<LastArtist> artists = new List<LastArtist>();
+            List<LastAlbum> albums = new List<LastAlbum>();
+
+            LastfmClient lfmClient = new LastfmClient(_credentials.LastFM_ApiKey, _credentials.LastFM_SecretKey);
+
+            if (!string.IsNullOrEmpty(searchTitle))
+            {
+                var resAlbums = await lfmClient.Album.SearchAsync(searchTitle);
+                albums = resAlbums.ToList();
+
+            }
+
+            if (!string.IsNullOrEmpty(searchArtist))
+            {
+                var artistAlbums = await lfmClient.Artist.GetTopAlbumsAsync(searchArtist);
+                albums.AddRange(artistAlbums);
+            }
+
+            List<Album> searchResults = new List<Album>();
+
+            foreach (var album in albums)
+            {
+                searchResults.Add(new Album()
+                {
+                    LastAlbum = album
+                });
+            }
+
+            return View(searchResults);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(
+            string id,
+            CancellationToken requestAborted)
+        {
+            ViewData["Message"] = "Delete record.";
+            
+            Album album = DbContext.Albums.Where(p => p.ID.ToString() == id).SingleOrDefault();
+
+            DbContext.Albums.Remove(album);
+            //DbContext.SaveChanges();
+
+            return Json(album.ID);
         }
 
         public IActionResult About()
@@ -61,29 +118,28 @@ namespace RecordCollection.Web.Controllers
             return View();
         }
 
-        public async Task<List<Album>> LoadRecords()
+        public async Task<IQueryable<Album>> LoadRecords()
         {
-            var client = new LastfmClient(_credentials.ApiKey, _credentials.SecretKey);
+            var client = new LastfmClient(_credentials.LastFM_ApiKey, _credentials.LastFM_SecretKey);
 
             var collection = DbContext.Collections.Single(p => p.UserID == DbContext.Users.Single().Id);
-            var res = await client.Album.GetInfoAsync("Grimes", "Visions");
-            var list = DbContext.Albums
-                                    .Where(p => p.CollectionID == collection.ID)
-                                    .Select(p => p.LastFM_ID);
 
-            var albums = new List<Album>();
+            var albums = DbContext.Albums
+                            .Where(p => p.CollectionID == collection.ID);
 
-            foreach (var l_id in list)
+            foreach (var album in albums)
             {
-                var response = await client.Album.GetInfoByMbidAsync(res.Content.Mbid);
-                LastAlbum l_album = response.Content;
+                var response = await client.Album.GetInfoByMbidAsync(album.LastFM_ID);
+                LastAlbum lastAlbum = response.Content;
 
-                albums.Add(new Album() {
-                    ImgUrl = l_album.Images.Medium.AbsoluteUri,
-                    LastFM_ID = l_album.Id,
-                    Name = l_album.Name,
-                    ArtistName = l_album.ArtistName
-                });
+                album.LastAlbum = lastAlbum;
+                    //ImgUrl = album.Images.Medium.AbsoluteUri,
+                    //LastFM_ID = album.Mbid,
+                    //Name = album.Name,
+                    //ArtistName = album.ArtistName,
+                    //CollectionID = collection.ID,
+                    //ID = 
+                //});
             }
 
             return albums;

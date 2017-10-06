@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 
 namespace RecordCollection.Web.Models.HomeViewModels
 {
-    public class LastFM_Model
+    public class LastFM_Credentials
     {
-        public string ApiKey { get; set; }
+        public string LastFM_ApiKey { get; set; }
 
-        public string SecretKey { get; set; }
+        public string LastFM_SecretKey { get; set; }
     }
 }
