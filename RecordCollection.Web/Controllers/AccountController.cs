@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using RecordCollection.Web.Models;
 using RecordCollection.Web.Models.AccountViewModels;
 using RecordCollection.Web.Services;
+using RecordCollection.Web.Data;
 
 namespace RecordCollection.Web.Controllers
 {
@@ -22,14 +23,17 @@ namespace RecordCollection.Web.Controllers
         private readonly IEmailSender _emailSender;
         private readonly ISmsSender _smsSender;
         private readonly ILogger _logger;
+        private readonly ApplicationDbContext DbContext;
 
         public AccountController(
+            ApplicationDbContext dbContext,
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IEmailSender emailSender,
             ISmsSender smsSender,
             ILoggerFactory loggerFactory)
         {
+            DbContext = dbContext;
             _userManager = userManager;
             _signInManager = signInManager;
             _emailSender = emailSender;
@@ -117,6 +121,11 @@ namespace RecordCollection.Web.Controllers
                     //    $"Please confirm your account by clicking this link: <a href='{callbackUrl}'>link</a>");
                     await _signInManager.SignInAsync(user, isPersistent: false);
                     _logger.LogInformation(3, "User created a new account with password.");
+                    DbContext.Collections.Add(new Collection()
+                    {
+                        UserID = user.Id
+                    });
+                    await DbContext.SaveChangesAsync();
                     return RedirectToLocal(returnUrl);
                 }
                 AddErrors(result);

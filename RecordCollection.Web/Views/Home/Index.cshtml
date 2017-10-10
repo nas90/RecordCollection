@@ -68,10 +68,12 @@
         }
     </div>
     <div class="pull-right">
-        @Html.ActionLink("Add Record", "Add", "Home")
+        @Html.ActionLink("Add Record", "Index", "Browse")
     </div>
     <br />
     <br />
+    @if (Model.Albums.Count > 0)
+    {
     <table id="record-collection" class="table table-bordered table-responsive table-hover table-striped">
         <tr>
             <th>
@@ -101,6 +103,12 @@
             </tr>
         }
     </table>
+    }
+    else
+    {
+    <div>No records found</div>
+
+    }
 
     @*<div id="myCarousel" class="carousel slide" data-ride="carousel" data-interval="6000">
         <ol class="carousel-indicators">

@@ -1,11 +1,55 @@
 @model List<Album>
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Xsrf
 @{
     ViewData["Title"] = "Add";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
 
+@functions
+{
+    public string GetAntiXsrfRequestToken()
+    {
+        return Xsrf.GetAndStoreTokens(Context).RequestToken;
+    }
+}
+
 @*<h3>@ViewData["Message"]</h3>*@
+
+<script>
+
+    $(function () {
+        $(".AddRecord").click(function () {
+            // Get the id from the link
+            var recordToAdd = $(this).attr("data-id");
+            var PostToUrl = $(this).attr("data-url");
+            if (recordToAdd != '') {
+
+                // Perform the ajax post
+                $.ajax(PostToUrl, {
+                    type: "post",
+                    data: {
+                        "id": recordToAdd
+                    },
+                    dataType: "json",
+                    headers: {
+                        "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                    }
+                }).done(function (id) {
+                    // Successful requests get here
+                    // Update the page elements
+                    $('#row-' + id).fadeOut('slow');
+
+                    //$('#cart-total').text(data.cartTotal);
+                    //$('#update-message').text(data.message);
+                    //$('#cart-status').text(data.cartCount);
+                });
+
+            }
+        });
+    });
+
+</script>
 
 <div class="row">
     <h2>Record Collection - Add Record</h2>
@@ -50,8 +94,8 @@
                 <h3>@string.Concat(item.LastAlbum.ArtistName, " - ", item.LastAlbum.Name)</h3>
             </td>
             <td>
-                <a href="#" class="btn btn-primary RemoveLink" data-id="@item.ID"
-                   data-url='@Url.Content("~/Home/Delete")'>
+                <a href="#" class="btn btn-primary AddRecord" data-id="@item.ID"
+                   data-url='@Url.Content("~/Add/AddRecord")'>
                     <span class="glyphicon glyphicon-plus-sign"></span> Add to Collection
                 </a>
             </td>

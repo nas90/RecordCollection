@@ -12,6 +12,7 @@ using RecordCollection.Web.Models.HomeViewModels;
 using System.Threading;
 using System.Collections;
 using System.Collections.Generic;
+using System.Security.Claims;
 
 namespace RecordCollection.Web.Controllers
 {
@@ -19,6 +20,7 @@ namespace RecordCollection.Web.Controllers
     public class HomeController : Controller
     {
         private readonly LastFM_Credentials _credentials;
+        private readonly ApplicationDbContext DbContext;
 
         public HomeController(ApplicationDbContext dbContext, IOptions<LastFM_Credentials> settingsOptions)
         {
@@ -26,7 +28,6 @@ namespace RecordCollection.Web.Controllers
             _credentials = settingsOptions.Value;
         }
 
-        public ApplicationDbContext DbContext { get; }
         
         public async Task<ViewResult> Index(string searchString)
         {
@@ -47,41 +48,6 @@ namespace RecordCollection.Web.Controllers
             
             return View(l_model);
         }
-        
-        public async Task<IActionResult> Add(string searchArtist, string searchTitle)
-        {
-            ViewData["Message"] = "Add new record.";
-
-            List<LastArtist> artists = new List<LastArtist>();
-            List<LastAlbum> albums = new List<LastAlbum>();
-
-            LastfmClient lfmClient = new LastfmClient(_credentials.LastFM_ApiKey, _credentials.LastFM_SecretKey);
-
-            if (!string.IsNullOrEmpty(searchTitle))
-            {
-                var resAlbums = await lfmClient.Album.SearchAsync(searchTitle);
-                albums = resAlbums.ToList();
-
-            }
-
-            if (!string.IsNullOrEmpty(searchArtist))
-            {
-                var artistAlbums = await lfmClient.Artist.GetTopAlbumsAsync(searchArtist);
-                albums.AddRange(artistAlbums);
-            }
-
-            List<Album> searchResults = new List<Album>();
-
-            foreach (var album in albums)
-            {
-                searchResults.Add(new Album()
-                {
-                    LastAlbum = album
-                });
-            }
-
-            return View(searchResults);
-        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -94,7 +60,7 @@ namespace RecordCollection.Web.Controllers
             Album album = DbContext.Albums.Where(p => p.ID.ToString() == id).SingleOrDefault();
 
             DbContext.Albums.Remove(album);
-            //DbContext.SaveChanges();
+            DbContext.SaveChanges();
 
             return Json(album.ID);
         }
@@ -122,7 +88,8 @@ namespace RecordCollection.Web.Controllers
         {
             var client = new LastfmClient(_credentials.LastFM_ApiKey, _credentials.LastFM_SecretKey);
 
-            var collection = DbContext.Collections.Single(p => p.UserID == DbContext.Users.Single().Id);
+            string userID = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var collection = DbContext.Collections.FirstOrDefault(p => p.UserID == userID);
 
             var albums = DbContext.Albums
                             .Where(p => p.CollectionID == collection.ID);

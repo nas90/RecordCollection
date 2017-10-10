@@ -15,19 +15,7 @@ namespace RecordCollection.Web.Models
         public int ID { get; set; }
         public string LastFM_ID { get; set; }
         public int CollectionID { get; set; }
-
-        private LastAlbum _lastAlbum;
-
-        [NotMapped]
-        public LastAlbum LastAlbum {
-            get
-            {
-                return _lastAlbum;
-            }
-            set
-            {
-                _lastAlbum = value;
-            }
-         }
+        public bool AlbumInCollection;
+        public LastAlbum LastAlbum;
     }
 }
