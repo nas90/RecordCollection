@@ -10,4 +10,11 @@ namespace RecordCollection.Web.Models
         public string data { get; set; }
         public bool success { get; set; }
     }
+
+    public class LastFM_Credentials
+    {
+        public string LastFM_ApiKey { get; set; }
+
+        public string LastFM_SecretKey { get; set; }
+    }
 }
