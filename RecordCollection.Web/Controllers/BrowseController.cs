@@ -40,7 +40,7 @@ namespace RecordCollection.Web.Controllers
 
             ViewData["Message"] = "Add new record.";
             ViewBag.CurrentArtist = searchArtist;
-            ViewBag.CurrentTitle = currentTitle;
+            ViewBag.CurrentTitle = searchTitle;
 
 
             string userID = User.FindFirstValue(ClaimTypes.NameIdentifier);
