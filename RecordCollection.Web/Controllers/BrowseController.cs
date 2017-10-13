@@ -4,90 +4,76 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using IF.Lastfm.Core.Objects;
 using IF.Lastfm.Core.Api;
-using RecordCollection.Web.Models.HomeViewModels;
+using RecordCollection.Web.Models;
 using RecordCollection.Web.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
-using RecordCollection.Web.Models;
 using System.Security.Claims;
 using System;
+using RecordCollection.Web.Services;
 
 namespace RecordCollection.Web.Controllers
 {
     [Authorize]
     public class BrowseController : Controller
     {
-        private readonly LastFM_Credentials _credentials;
+        private readonly DataHelper DataHelper;
 
         public BrowseController(ApplicationDbContext dbContext, IOptions<LastFM_Credentials> settingsOptions)
         {
-            DbContext = dbContext;
-            _credentials = settingsOptions.Value;
+            DataHelper = new DataHelper(dbContext, settingsOptions);
         }
 
         public ApplicationDbContext DbContext { get; }
 
-        public async Task<IActionResult> Index(string searchArtist, string searchTitle)
+        public async Task<IActionResult> Index(string searchArtist, string searchTitle, string currentArtist, string currentTitle, int? page)
         {
+            if (searchArtist != null || searchTitle != null)
+            {
+                page = 1;
+            }
+            else
+            {
+                searchArtist = currentArtist;
+                searchTitle = currentTitle;
+            }
+
             ViewData["Message"] = "Add new record.";
+            ViewBag.CurrentArtist = searchArtist;
+            ViewBag.CurrentTitle = currentTitle;
 
-            List<LastArtist> artists = new List<LastArtist>();
-            List<LastAlbum> albums = new List<LastAlbum>();
-
-            LastfmClient lfmClient = new LastfmClient(_credentials.LastFM_ApiKey, _credentials.LastFM_SecretKey);
-
-            if (!string.IsNullOrEmpty(searchTitle))
-            {
-                var resAlbums = await lfmClient.Album.SearchAsync(searchTitle);
-                albums.AddRange(resAlbums);
-
-            }
-
-            if (!string.IsNullOrEmpty(searchArtist))
-            {
-                var artistAlbums = await lfmClient.Artist.GetTopAlbumsAsync(searchArtist);
-                albums.AddRange(artistAlbums);
-            }
-
-            List<Album> searchResults = new List<Album>();
 
             string userID = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            foreach (var album in albums)
-            {
-                if (!string.IsNullOrEmpty(album.Mbid))
-                {
-                    Collection l_collection = DbContext.Collections.FirstOrDefault(p => p.UserID == userID);
 
-                    Album albumToAdd = new Album();
-                    albumToAdd.LastAlbum = album;
+            var searchResults = await DataHelper.SearchAlbums(userID, searchArtist, searchTitle);
 
-                    foreach (var test in DbContext.Albums.Where(p => p.CollectionID == l_collection.ID))
-                    {
-                        if (test.LastFM_ID == album.Mbid)
-                        {
-                            albumToAdd.AlbumInCollection = true;
-                            break;
-                        }
-                    }
-                    searchResults.Add(albumToAdd);
-                }
-            }
-            return View(searchResults);
-        }
+            var pager = new Pager(searchResults.Count(), page);
 
-        public JsonResult Add(string id)
-        {
-            string userID = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            Album l_album = new Album()
-            {
-                LastFM_ID = id,
-                CollectionID = DbContext.Collections.FirstOrDefault(p => p.UserID == userID).ID
+            BrowseViewModel l_model = new BrowseViewModel() {
+                Pager = pager,
+                Albums = searchResults.Skip((pager.CurrentPage - 1) * pager.PageSize).Take(pager.PageSize).ToList()
             };
 
-            DbContext.Albums.Add(l_album);
-            DbContext.SaveChanges();
+            return View(l_model);
+        }
 
-            return Json(l_album.LastFM_ID);
+        public IActionResult Add(string id)
+        {
+            string userID = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            ActionResponse response = new ActionResponse();
+
+            if (DataHelper.AddAlbum(userID, id))
+            {
+                response.data = id;
+                response.success = true;
+            }
+            else
+            {
+                response.success = false;
+                response.data = "Error adding the record.";
+            }
+            
+            return Json(response);
         }
     }
 }

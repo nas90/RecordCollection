@@ -1,0 +1,5 @@
+RecordCollection.Web/bin
+RecordCollection.Web/obj
+.vs
+
+*.user

@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging;
 using RecordCollection.Web.Data;
 using RecordCollection.Web.Models;
 using RecordCollection.Web.Services;
-using RecordCollection.Web.Models.HomeViewModels;
 
 namespace RecordCollection.Web
 {

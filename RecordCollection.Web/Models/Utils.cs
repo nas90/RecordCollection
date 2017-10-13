@@ -5,10 +5,9 @@ using System.Threading.Tasks;
 
 namespace RecordCollection.Web.Models
 {
-    public class LastFM_Credentials
+    public class ActionResponse
     {
-        public string LastFM_ApiKey { get; set; }
-
-        public string LastFM_SecretKey { get; set; }
+        public string data { get; set; }
+        public bool success { get; set; }
     }
 }

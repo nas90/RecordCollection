@@ -5,12 +5,12 @@ using System.Threading.Tasks;
 
 namespace RecordCollection.Web.Models
 {
-    public class HomeViewModel
+    public class BrowseViewModel
     {
         public List<Album> Albums { get; set; }
         public Pager Pager { get; set; }
 
-        public HomeViewModel()
+        public BrowseViewModel()
         {
             Albums = new List<Album>();
         }

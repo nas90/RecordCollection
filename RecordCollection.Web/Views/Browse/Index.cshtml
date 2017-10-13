@@ -1,4 +1,4 @@
-@model List<Album>
+@model BrowseViewModel
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Xsrf
 @{
     ViewData["Title"] = "Add";
@@ -19,59 +19,58 @@
 <script src="~/lib/jquery/dist/jquery.js"></script>
 <script>
 
-$(function () {
-    $(".AddRecord").click(function () {
-        // Get the id from the link
-        var recordToAdd = $(this).attr("data-id");
-        var PostToUrl = $(this).attr("data-url");
-        if (recordToAdd != '') {
+    $(function () {
+        $(".AddRecord").click(function () {
+            // Get the id from the link
+            var recordToAdd = $(this).attr("data-id");
+            if (recordToAdd != '') {
 
-            // Perform the ajax post
-            $.ajax(PostToUrl, {
-                type: "post",
-                data: {
-                    "id": recordToAdd
-                },
-                dataType: "json",
-                headers: {
-                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
-                }
-            }).done(function (id) {
-                // Successful requests get here
-                // Update the page elements
-                $('#status_' + id).html('<label>In collection</label>');
+                // Perform the ajax post
+                $.ajax({
+                    url: "@Url.Action("Add", "Browse")",
+                    type: "post",
+                    data: {
+                        "id": recordToAdd
+                    },
+                    dataType: "json",
+                    headers: {
+                        "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                    }
+                }).done(function (response) {
+                    if (response.success)
+                        $('#status_' + response.data).html('<label>In collection</label>');
+                    else
+                        alert(response.data);
+                });
 
-                //$('#cart-total').text(data.cartTotal);
-                //$('#update-message').text(data.message);
-                //$('#cart-status').text(data.cartCount);
-            });
-
-        }
+            }
+        });
     });
-});
 
 </script>
 
 <div class="row">
     <h2>Record Collection - Add Record</h2>
+    <br />
+    <br />
     <a asp-action="Index" asp-controller="Home">
-        <div id="btn-my-records" class="btn btn-primary">
+        <div class="btn btn-primary">
             <span class="glyphicon glyphicon-th-list"></span> My Records
         </div>
     </a>
     <h3>Search in Last.fm</h3>
-    @using (Html.BeginForm())
+    @using (Html.BeginForm(FormMethod.Get))
     {
         <div class="col-md-3">
-            Artist: @Html.TextBox("searchArtist")
+            Artist: @Html.TextBox("searchArtist", ViewBag.CurrentArtist as string, new { @class = "form-control" })
         </div>
         <div class="col-md-3">
-            Title: @Html.TextBox("searchTitle")
+            Title: @Html.TextBox("searchTitle", ViewBag.CurrentTitle as string, new { @class = "form-control" })
         </div>
-        <input type="submit" value="Search" />
+        <input type="submit" class="btn btn-default" style="margin:20px" value="Search" />
     }
     <br /><br />
-    @if (Model.Count > 0)
+    @if (Model.Albums.Count > 0)
     {
     <table id="search-results" class="table table-bordered table-responsive table-hover table-striped">
         <tr>
@@ -83,13 +82,15 @@ $(function () {
             </th>
             <th></th>
         </tr>
-        @foreach (var item in Model)
+        @foreach (var item in Model.Albums)
         {
             @if (item.LastAlbum != null)
             {
                 <tr>
                     <td>
-                        <img src="@if (item.LastAlbum.Images.Large != null) { @item.LastAlbum.Images.Large.AbsoluteUri; } " alt="@item.LastAlbum.Name" title="@item.LastAlbum.Name" />
+                        <img src="@if (item.LastAlbum.Images.Large != null)
+                        { @item.LastAlbum.Images.Large.AbsoluteUri;
+                        } " alt="@item.LastAlbum.Name" title="@item.LastAlbum.Name" />
                     </td>
                     <td>
                         <h3>@string.Concat(item.LastAlbum.ArtistName, " - ", item.LastAlbum.Name)</h3>
@@ -102,8 +103,7 @@ $(function () {
                             }
                             else
                             {
-                                <a class="btn btn-primary AddRecord" data-id="@item.LastAlbum.Mbid"
-                                    data-url='@Url.Content("~/Browse/Add")'>
+                                <a class="btn btn-primary AddRecord" data-id="@item.LastAlbum.Mbid">
                                     <span class="glyphicon glyphicon-plus-sign"></span> Add to Collection
                                 </a>
                             }
@@ -113,11 +113,10 @@ $(function () {
             }
         }
     </table>
+    <br />
+    <!-- pager -->
+    @Html.Partial("_Pager", Model.Pager)
     }
-    else
-    {
-        <div>No records found</div>
 
-    }
 </div>
 

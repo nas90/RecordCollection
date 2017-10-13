@@ -2,67 +2,78 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using IF.Lastfm.Core.Api;
-using IF.Lastfm.Core.Objects;
-using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authorization;
 using RecordCollection.Web.Data;
 using RecordCollection.Web.Models;
-using RecordCollection.Web.Models.HomeViewModels;
 using System.Threading;
 using System.Collections;
 using System.Collections.Generic;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
+using RecordCollection.Web.Services;
 
 namespace RecordCollection.Web.Controllers
 {
     [Authorize]
     public class HomeController : Controller
     {
-        private readonly LastFM_Credentials _credentials;
-        private readonly ApplicationDbContext DbContext;
+        private readonly DataHelper DataHelperController;
 
         public HomeController(ApplicationDbContext dbContext, IOptions<LastFM_Credentials> settingsOptions)
         {
-            DbContext = dbContext;
-            _credentials = settingsOptions.Value;
+            DataHelperController = new DataHelper(dbContext, settingsOptions);
         }
-
         
-        public async Task<ViewResult> Index(string searchString)
+        public async Task<IActionResult> Index(string searchString, string currentFilter, int? page)
         {
-            HomeViewModel l_model = new HomeViewModel();
+            string userID = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var res = await LoadRecords();
+            var res = await DataHelperController.LoadUserRecords(userID);
 
-            l_model.Albums = res.ToList();
+            if (searchString != null)
+            {
+                page = 1;
+            }
+            else
+            {
+                searchString = currentFilter;
+            }
+
+            ViewBag.CurrentFilter = searchString;
 
             if (!String.IsNullOrEmpty(searchString))
             {
-                l_model.Albums = l_model.Albums.Where(s => s.LastAlbum.Name.ToLower().Contains(searchString.ToLower())
-                                       || s.LastAlbum.ArtistName.ToLower().Contains(searchString.ToLower())).ToList();
+                res = res.Where(s => s.LastAlbum.Name.ToLower().Contains(searchString.ToLower())
+                                       || s.LastAlbum.ArtistName.ToLower().Contains(searchString.ToLower()));
             }
 
-            ViewData["Collections"] = DbContext.Collections;
-            ViewData["Albums"] = DbContext.Albums;
+            var pager = new Pager(res.Count(), page);
+
+            HomeViewModel l_model = new HomeViewModel() {
+                Pager = pager,
+                Albums = res.Skip((pager.CurrentPage - 1) * pager.PageSize).Take(pager.PageSize).ToList()
+            };
             
             return View(l_model);
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Delete(
-            string id,
-            CancellationToken requestAborted)
+        [HttpPost, ActionName("Delete")]
+        public IActionResult Delete(int id)
         {
-            ViewData["Message"] = "Delete record.";
-            
-            Album album = DbContext.Albums.Where(p => p.ID.ToString() == id).SingleOrDefault();
+            ActionResponse response = new ActionResponse();
 
-            DbContext.Albums.Remove(album);
-            DbContext.SaveChanges();
+            if (DataHelperController.DeleteAlbum(id))
+            {
+                response.success = true;
+                response.data = id.ToString();
+            }
+            else
+            {
+                response.success = false;
+                response.data = "Error deleting the record.";
+            }
 
-            return Json(album.ID);
+            return Json(response);
         }
 
         public IActionResult About()
@@ -83,33 +94,5 @@ namespace RecordCollection.Web.Controllers
         {
             return View();
         }
-
-        public async Task<IQueryable<Album>> LoadRecords()
-        {
-            var client = new LastfmClient(_credentials.LastFM_ApiKey, _credentials.LastFM_SecretKey);
-
-            string userID = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var collection = DbContext.Collections.FirstOrDefault(p => p.UserID == userID);
-
-            var albums = DbContext.Albums
-                            .Where(p => p.CollectionID == collection.ID);
-
-            foreach (var album in albums)
-            {
-                var response = await client.Album.GetInfoByMbidAsync(album.LastFM_ID);
-                LastAlbum lastAlbum = response.Content;
-
-                album.LastAlbum = lastAlbum;
-                    //ImgUrl = album.Images.Medium.AbsoluteUri,
-                    //LastFM_ID = album.Mbid,
-                    //Name = album.Name,
-                    //ArtistName = album.ArtistName,
-                    //CollectionID = collection.ID,
-                    //ID = 
-                //});
-            }
-
-            return albums;
-        } 
     }
 }
