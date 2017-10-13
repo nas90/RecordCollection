@@ -21,14 +21,19 @@ namespace RecordCollection.Web.Services
             _credentials = settingsOptions.Value;
         }
 
-        internal async Task<IQueryable<Album>> LoadUserRecords(string userID)
+        internal IQueryable<Album> LoadUserRecords(string userID)
         {
-            var client = new LastfmClient(_credentials.LastFM_ApiKey, _credentials.LastFM_SecretKey);
-
-            var collection = DbContext.Collections.FirstOrDefault(p => p.UserID == userID);
+           var collection = DbContext.Collections.FirstOrDefault(p => p.UserID == userID);
 
             var albums = DbContext.Albums
                             .Where(p => p.CollectionID == collection.ID);
+
+            return albums;
+        }
+
+        internal async Task<IQueryable<Album>> FetchAlbumData(IQueryable<Album> albums) {
+
+            var client = new LastfmClient(_credentials.LastFM_ApiKey, _credentials.LastFM_SecretKey);
 
             foreach (var album in albums)
             {
@@ -37,7 +42,6 @@ namespace RecordCollection.Web.Services
 
                 album.LastAlbum = lastAlbum;
             }
-
             return albums;
         }
 
@@ -62,7 +66,7 @@ namespace RecordCollection.Web.Services
             }
         }
 
-        internal async Task<List<Album>> SearchAlbums(string userID, string searchArtist, string searchTitle)
+        internal async Task<List<Album>> SearchAlbums(string userID, string searchArtist, string searchTitle, int page)
         {
             List<LastArtist> artists = new List<LastArtist>();
             List<LastAlbum> albums = new List<LastAlbum>();
@@ -71,20 +75,20 @@ namespace RecordCollection.Web.Services
 
             if (!string.IsNullOrEmpty(searchTitle))
             {
-                var resAlbums = await lfmClient.Album.SearchAsync(searchTitle);
+                var resAlbums = await lfmClient.Album.SearchAsync(searchTitle, page, 10);
                 albums.AddRange(resAlbums);
 
             }
 
             if (!string.IsNullOrEmpty(searchArtist))
             {
-                var artistAlbums = await lfmClient.Artist.GetTopAlbumsAsync(searchArtist);
+                var artistAlbums = await lfmClient.Artist.GetTopAlbumsAsync(searchArtist, false, page, 10);
                 albums.AddRange(artistAlbums);
             }
 
             List<Album> searchResults = new List<Album>();
 
-            foreach (var album in albums)
+            foreach (var album in albums.OrderBy(p => p.PlayCount))
             {
                 if (!string.IsNullOrEmpty(album.Mbid))
                 {

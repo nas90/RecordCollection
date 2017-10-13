@@ -17,14 +17,13 @@ namespace RecordCollection.Web.Controllers
     [Authorize]
     public class BrowseController : Controller
     {
-        private readonly DataHelper DataHelper;
+        private readonly DataHelper _dataHelper;
 
         public BrowseController(ApplicationDbContext dbContext, IOptions<LastFM_Credentials> settingsOptions)
         {
-            DataHelper = new DataHelper(dbContext, settingsOptions);
+            _dataHelper = new DataHelper(dbContext, settingsOptions);
         }
 
-        public ApplicationDbContext DbContext { get; }
 
         public async Task<IActionResult> Index(string searchArtist, string searchTitle, string currentArtist, string currentTitle, int? page)
         {
@@ -40,12 +39,12 @@ namespace RecordCollection.Web.Controllers
 
             ViewData["Message"] = "Add new record.";
             ViewBag.CurrentArtist = searchArtist;
-            ViewBag.CurrentTitle = currentTitle;
+            ViewBag.CurrentTitle = searchTitle;
 
 
             string userID = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var searchResults = await DataHelper.SearchAlbums(userID, searchArtist, searchTitle);
+            var searchResults = await _dataHelper.SearchAlbums(userID, searchArtist, searchTitle, page ?? 1);
 
             var pager = new Pager(searchResults.Count(), page);
 
@@ -62,7 +61,7 @@ namespace RecordCollection.Web.Controllers
             string userID = User.FindFirstValue(ClaimTypes.NameIdentifier);
             ActionResponse response = new ActionResponse();
 
-            if (DataHelper.AddAlbum(userID, id))
+            if (_dataHelper.AddAlbum(userID, id))
             {
                 response.data = id;
                 response.success = true;
