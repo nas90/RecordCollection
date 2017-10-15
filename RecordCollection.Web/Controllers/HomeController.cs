@@ -17,18 +17,18 @@ namespace RecordCollection.Web.Controllers
     [Authorize]
     public class HomeController : Controller
     {
-        private readonly DataHelper DataHelperController;
+        private readonly DataHelper DataHelper;
 
         public HomeController(ApplicationDbContext dbContext, IOptions<LastFM_Credentials> settingsOptions)
         {
-            DataHelperController = new DataHelper(dbContext, settingsOptions);
+            DataHelper = new DataHelper(dbContext, settingsOptions);
         }
         
         public async Task<IActionResult> Index(string searchString, string currentFilter, int? page)
         {
             string userID = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var res = await DataHelperController.LoadUserRecords(userID);
+            var res = await DataHelper.LoadUserRecords(userID);
 
             if (searchString != null)
             {
@@ -62,7 +62,7 @@ namespace RecordCollection.Web.Controllers
         {
             ActionResponse response = new ActionResponse();
 
-            if (DataHelperController.DeleteAlbum(id))
+            if (DataHelper.DeleteAlbum(id))
             {
                 response.success = true;
                 response.data = id.ToString();
