@@ -26,6 +26,10 @@ namespace RecordCollection.Web.Controllers
         
         public async Task<IActionResult> Index(string searchString, string currentFilter, int? page)
         {
+            string userID = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var res = await DataHelper.LoadUserRecords(userID);
+
             if (searchString != null)
             {
                 page = 1;
