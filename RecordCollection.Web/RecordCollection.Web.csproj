@@ -7,6 +7,7 @@
     <OutputType>Exe</OutputType>
     <PackageId>RecordCollection.Web</PackageId>
     <UserSecretsId>aspnet-RecordCollection.Web-4b9318cd-94d8-4a69-9c73-99d35448e40f</UserSecretsId>
+    <RuntimeIdentifier>win7-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>

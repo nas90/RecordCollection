@@ -41,17 +41,23 @@ namespace RecordCollection.Web.Controllers
 
             ViewBag.CurrentFilter = searchString;
 
+            string userID = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var res = await DataHelper.LoadUserRecords(userID);
+
             if (!String.IsNullOrEmpty(searchString))
             {
                 res = res.Where(s => s.LastAlbum.Name.ToLower().Contains(searchString.ToLower())
                                        || s.LastAlbum.ArtistName.ToLower().Contains(searchString.ToLower()));
             }
-
+            
             var pager = new Pager(res.Count(), page);
+            res = res.Skip((pager.CurrentPage - 1) * pager.PageSize).Take(pager.PageSize);
+
+            // res = await DataHelper.FetchAlbumData(res);
 
             HomeViewModel l_model = new HomeViewModel() {
                 Pager = pager,
-                Albums = res.Skip((pager.CurrentPage - 1) * pager.PageSize).Take(pager.PageSize).ToList()
+                Albums = res.ToList()
             };
             
             return View(l_model);
